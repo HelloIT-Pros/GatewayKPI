@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gateway Management — Data Validation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy-950:#020817;--navy-900:#0b1220;--navy-850:#0f1729;--navy-800:#131c30;
+    --navy-700:#1b2740;--navy-600:#273450;--navy-500:#3a4a6b;
+    --slate-400:#8da2c0;--slate-300:#b9c6dc;--slate-200:#dce4f0;--white:#fff;
+    --gold-400:#fbbf24;--gold-500:#f59e0b;--green:#4ade80;--red:#f87171;
+    --shadow:0 1px 3px rgba(0,0,0,.35),0 1px 2px rgba(0,0,0,.2);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:radial-gradient(1200px 600px at 80% -10%,rgba(245,158,11,.06),transparent 60%),var(--navy-900);
+    color:var(--slate-200);line-height:1.55;-webkit-font-smoothing:antialiased;padding-bottom:60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  header{background:rgba(2,8,23,.85);border-bottom:1px solid var(--navy-700);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
+  .head-in{max-width:1040px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .logo{display:flex;align-items:center;gap:12px}
+  .mark{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--gold-400),#d97706);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b1220;box-shadow:0 2px 10px rgba(245,158,11,.3)}
+  .lname{font-weight:700;color:#fff;font-size:14px}
+  .lsub{font-size:10px;color:var(--slate-400);letter-spacing:.08em;text-transform:uppercase}
+  .badge-hud{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--gold-400);
+    font-size:11px;font-weight:600;padding:5px 11px;border-radius:6px;letter-spacing:.04em;text-transform:uppercase}
+  .hero{padding:34px 0 8px}
+  .hero h1{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em}
+  .hero .sub{color:var(--gold-400);font-weight:600;font-size:15px;margin-top:2px}
+  .hero .meta{color:var(--slate-400);font-size:13px;margin-top:10px}
+  .rule{height:2px;background:linear-gradient(90deg,var(--gold-500),transparent);margin:18px 0 26px;border-radius:2px}
+  h2{font-size:13px;font-weight:700;color:var(--slate-300);text-transform:uppercase;letter-spacing:.09em;margin:30px 0 14px}
+  p.lead{font-size:14.5px;color:var(--slate-200);max-width:80ch}
+  .src{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:var(--shadow);margin-top:6px}
+  .src th{background:var(--navy-800);color:var(--slate-300);text-align:left;font-size:11px;text-transform:uppercase;
+    letter-spacing:.06em;padding:11px 14px;border-bottom:1px solid var(--navy-700)}
+  .src td{padding:11px 14px;font-size:13px;border-bottom:1px solid var(--navy-700);background:var(--navy-850);vertical-align:top}
+  .src tr:last-child td{border-bottom:none}
+  .src td code{color:var(--gold-400);font-size:12.5px}
+  .note{font-size:12.5px;color:var(--slate-400);font-style:italic;margin-top:10px}
+  .card{background:linear-gradient(180deg,var(--navy-800),var(--navy-850));border:1px solid var(--navy-700);
+    border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--navy-700)}
+  .num{width:26px;height:26px;border-radius:7px;background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.32);
+    color:var(--gold-400);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .card-h .t{font-weight:700;color:#fff;font-size:15.5px}
+  .card-h .where{margin-left:auto;font-size:11.5px;color:var(--slate-400);text-align:right}
+  .rows{padding:6px 18px 12px}
+  .row{display:grid;grid-template-columns:140px 1fr;gap:12px;padding:9px 0;border-bottom:1px solid rgba(39,52,80,.5);align-items:baseline}
+  .row:last-child{border-bottom:none}
+  .k{font-size:11px;font-weight:700;color:var(--slate-400);text-transform:uppercase;letter-spacing:.05em}
+  .v{font-size:13.5px;color:var(--slate-200)}
+  .v code{color:var(--gold-400)}
+  .calc{font-variant-numeric:tabular-nums}
+  .result{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .result .big{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.01em}
+  .chk{display:inline-flex;align-items:center;gap:5px;color:var(--green);font-weight:700;font-size:12.5px;
+    background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.28);padding:3px 9px;border-radius:6px}
+  .result-row{background:rgba(245,158,11,.04)}
+  .pf{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .pf th{background:var(--navy-800);color:var(--slate-300);font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+    padding:11px 14px;border-bottom:1px solid var(--navy-700);text-align:right}
+  .pf th:first-child{text-align:left}
+  .pf td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--navy-700);background:var(--navy-850);text-align:right;font-variant-numeric:tabular-nums}
+  .pf td:first-child{text-align:left}
+  .pf tr.total td{background:rgba(245,158,11,.08);font-weight:700;color:#fff;border-bottom:none}
+  ol.steps{margin:6px 0 0 20px}
+  ol.steps li{font-size:13.5px;margin:7px 0;color:var(--slate-200)}
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--navy-700);font-size:12px;color:var(--slate-400);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .back{display:inline-block;margin-top:6px;color:var(--gold-400);font-size:13px;text-decoration:none;font-weight:600}
+  .back:hover{text-decoration:underline}
+  @media (max-width:640px){.row{grid-template-columns:1fr;gap:2px}.card-h .where{display:none}.hero h1{font-size:21px}}
+  @media print{body{background:#fff;color:#111}.card,.src td,.pf td{background:#fff}header{position:static}}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="logo">
+      <div class="mark">GW</div>
+      <div><div class="lname">Gateway Management Services</div><div class="lsub">Data Validation Summary</div></div>
+    </div>
+    <span class="badge-hud">USDA RD · HUD</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Dashboard Data Validation Summary</h1>
+    <div class="sub">How each figure is calculated and verified</div>
+    <div class="meta">Reporting period <b style="color:var(--slate-200)">May 2026</b> &nbsp;·&nbsp; Data as of <b style="color:var(--slate-200)">June 10, 2026</b></div>
+    <a class="back" href="/">← Back to dashboard</a>
+  </div>
+  <div class="rule"></div>
+
+  <h2>Purpose</h2>
+  <p class="lead">Every figure shown on the dashboard is calculated directly from your RealPage / OneSite report exports — there are no manual entries or adjustments. Below are eight representative figures, each showing the exact source report, where the number comes from, and the simple math behind it. Every result is confirmed against what appears on the dashboard. Examples use <b>Eagleview Apartments</b> unless noted.</p>
+
+  <h2>Where the data comes from</h2>
+  <table class="src">
+    <thead><tr><th style="width:30%">Report</th><th style="width:34%">File name</th><th>Feeds these figures</th></tr></thead>
+    <tbody>
+      <tr><td>General Ledger (Excel)</td><td><code>General_Ledger_Report.xlsx</code></td><td>Cash, reserves, payables, income, expenses, capital spend</td></tr>
+      <tr><td>Rent Roll Detail (Excel)</td><td><code>Rent+Roll+Detail+-+Excel.xls</code></td><td>Units, occupancy, lease dates, rent, deposits</td></tr>
+      <tr><td>Delinquent &amp; Prepaid (Excel)</td><td><code>Delinquent+and+Prepaid+-+Excel.xls</code></td><td>Resident &amp; subsidy balances, aging, late counts</td></tr>
+      <tr><td>Bank Deposit Details (Excel)</td><td><code>Bank+Deposit+Details+-+Excel.xls</code></td><td>Income drill-down detail</td></tr>
+    </tbody>
+  </table>
+  <div class="note">Each property has its own copy of these four reports.</div>
+
+  <h2>Worked validations</h2>
+  <div id="cards"></div>
+
+  <h2>Portfolio roll-up</h2>
+  <p class="lead" style="margin-bottom:12px">The Portfolio Summary simply adds the four properties together. Occupancy is total occupied units divided by total units.</p>
+  <table class="pf">
+    <thead><tr><th>Property</th><th>Occupied / Units</th><th>Total Income</th><th>Operating Cash</th></tr></thead>
+    <tbody>
+      <tr><td>Eagleview Apartments</td><td>32 / 32</td><td>$26,618</td><td>$39,087</td></tr>
+      <tr><td>Elk Valley Manor</td><td>50 / 50</td><td>$63,288</td><td>$21,764</td></tr>
+      <tr><td>East West Apartments</td><td>20 / 20</td><td>$16,497</td><td>$39,681</td></tr>
+      <tr><td>Tidioute Towers</td><td>49 / 53</td><td>$54,410</td><td>$43,531</td></tr>
+      <tr class="total"><td>Portfolio Total</td><td>151 / 155 = 97.4%</td><td>$160,813</td><td>$144,063</td></tr>
+    </tbody>
+  </table>
+  <p class="result" style="margin-top:12px;font-size:13.5px">Dashboard shows 97.4% occupancy, $160,813 income, $144,063 cash <span class="chk">✓ matches</span></p>
+
+  <h2>How to spot-check any number yourself</h2>
+  <ol class="steps">
+    <li>Open the matching report for the property (General Ledger for cash, reserves, payables, income, capital; Rent Roll for occupancy and deposits).</li>
+    <li>Find the account number or column named above.</li>
+    <li>Read the ending balance (for ledger accounts) or apply the simple math shown.</li>
+    <li>On the dashboard, click the card or table row — a panel slides open listing the exact transactions behind that number.</li>
+  </ol>
+
+  <footer>
+    <span>Prepared by HelloIT Pros for Gateway Management Services</span>
+    <span>Reporting period: May 2026</span>
+  </footer>
+</div>
+
+<script>
+  const V = [
+    { t:'Operating Cash — $39,087', where:'Owner view → “Operating Cash” card', rows:[
+      ['Source','General Ledger → account <code>1116-1000</code> (Cash in Bank – Rental)'],
+      ['In the file','The “Totals” line for 1116-1000 — the ending balance in the far-right Balance column.'],
+      ['Calculation','<span class="calc">Ending balance of the cash account = $39,087.01</span>'],
+      ['__result','$39,087'],
+    ]},
+    { t:'Total Income — $26,618', where:'Owner view → “Total Income” card', rows:[
+      ['Source','General Ledger → income accounts <code>5120</code>, <code>5121</code>, <code>5311</code>'],
+      ['Calculation','<span class="calc">Resident rent (5120) $6,517<br>+ Rental assistance / subsidy (5121) $19,846<br>+ Miscellaneous / laundry (5311) $255<br>= <b style="color:#fff">$26,618</b></span>'],
+      ['__result','$26,618'],
+    ]},
+    { t:'Occupancy Rate — 100.0%', where:'Owner &amp; Operational → “Occupancy” card', rows:[
+      ['Source','Rent Roll Detail → “Unit/Lease Status” column'],
+      ['In the file','Count each unit once; a unit is occupied unless its status reads “Vacant”.'],
+      ['Calculation','<span class="calc">32 occupied ÷ 32 total units × 100 = 100.0%</span>'],
+      ['__result','100.0% (32 / 32)'],
+    ]},
+    { t:'Reserve for Replacement — $104,719', where:'Owner view → reserve card', rows:[
+      ['Source','General Ledger → account <code>1183-1000</code>'],
+      ['In the file','Ending balance on the Totals line for the Reserve for Replacement account.'],
+      ['__result','$104,719'],
+    ]},
+    { t:'Open Payables — $12,446', where:'Owner &amp; Operational → “Open Payables” card', rows:[
+      ['Source','General Ledger → account <code>2110-0000</code> (Accounts Payable Trade)'],
+      ['In the file','Ending balance of the payables account. Carried as a negative (a liability); the dashboard shows the amount owed.'],
+      ['Calculation','<span class="calc">Amount owed = $12,446.20</span>'],
+      ['__result','$12,446'],
+    ]},
+    { t:'Capital Expenditures — $24,050', where:'Owner view → highlighted capital card', rows:[
+      ['Source','General Ledger → any <code>9xxx</code> capital account'],
+      ['In the file','Account 9120-1730 “Structures – Windows” posted this period.'],
+      ['Calculation','<span class="calc">Total of all 9xxx capital postings = $24,050</span>'],
+      ['__result','$24,050 (1 capital project)'],
+    ]},
+    { t:'Delinquency Rate — 0.2%', where:'Owner view → “Delinquency Rate” card', rows:[
+      ['Source','Delinquent &amp; Prepaid + Rent Roll'],
+      ['How it works','We total residents’ own past-due balances (the “Net Balance” column, excluding current-month subsidy the housing program still owes), then divide by the monthly rent roll.'],
+      ['Calculation','<span class="calc">Resident past-due $58 ÷ monthly rent roll $26,363 × 100 = 0.2%</span>'],
+      ['__result','0.2%'],
+    ]},
+    { t:'Deposit Shortfall, Unit 214 — $553', where:'Operational → “Below Required Deposit” table', rows:[
+      ['Source','Rent Roll Detail → “Required Deposit” and “Dep On Hand” columns'],
+      ['Calculation','<span class="calc">Required $853 − On hand $300 = $553 short</span>'],
+      ['__result','$553 shortfall'],
+    ]},
+  ];
+  const host = document.getElementById('cards');
+  V.forEach((v,i)=>{
+    const rows = v.rows.map(r=>{
+      if(r[0]==='__result') return `<div class="row result-row"><div class="k">Result</div><div class="v result"><span class="big">${r[1]}</span><span class="chk">✓ matches dashboard</span></div></div>`;
+      return `<div class="row"><div class="k">${r[0]}</div><div class="v">${r[1]}</div></div>`;
+    }).join('');
+    host.insertAdjacentHTML('beforeend',
+      `<div class="card"><div class="card-h"><span class="num">${i+1}</span><span class="t">${v.t}</span><span class="where">${v.where}</span></div><div class="rows">${rows}</div></div>`);
+  });
+</script>
+</body>
+</html>
