@@ -18,7 +18,7 @@ export default function App() {
   const [selected, setSelected] = useState('portfolio'); // 'portfolio' | property id
   const [view, setView] = useState('owner'); // 'owner' | 'operational'
   const [drill, setDrill] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('gw-theme') || 'dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('gw-theme') || 'light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
