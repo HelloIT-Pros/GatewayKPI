@@ -99,7 +99,7 @@ function Header({ theme, setTheme }) {
             Reporting period <strong>May 2026</strong><br />
             Data as of <strong>{fmtDate(AS_OF)}</strong>
           </div>
-          <a className="header-link" href="/validation.html" title="View data validation summary">Validation ↗</a>
+          <a className="header-link" href={`${process.env.PUBLIC_URL}/validation.html`} title="View data validation summary">Validation ↗</a>
           <span className="period-badge">USDA RD · HUD</span>
           <button
             className="theme-toggle"
