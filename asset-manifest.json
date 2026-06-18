@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/GatewayKPI/static/css/main.ee1ae8cb.css",
+    "main.js": "/GatewayKPI/static/js/main.d7889805.js",
+    "static/js/453.4048f6ca.chunk.js": "/GatewayKPI/static/js/453.4048f6ca.chunk.js",
+    "index.html": "/GatewayKPI/index.html",
+    "main.ee1ae8cb.css.map": "/GatewayKPI/static/css/main.ee1ae8cb.css.map",
+    "main.d7889805.js.map": "/GatewayKPI/static/js/main.d7889805.js.map",
+    "453.4048f6ca.chunk.js.map": "/GatewayKPI/static/js/453.4048f6ca.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.ee1ae8cb.css",
+    "static/js/main.d7889805.js"
+  ]
+}
