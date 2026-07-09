@@ -183,6 +183,17 @@ function KpiCard({ label, icon, value, valueSmall, sub, breakdown, accent, varia
   );
 }
 
+// ── "Data needed" marker: red dot with a hover note ─────────
+function DataFlag({ note, label }) {
+  return (
+    <span className="data-flag" tabIndex={0} aria-label={`Data needed: ${note}`}>
+      <span className="data-flag-dot" />
+      {label && <span className="data-flag-label">{label}</span>}
+      <span className="data-flag-tip"><strong>Data needed</strong>{note ? ` — ${note}` : ''}</span>
+    </span>
+  );
+}
+
 // ── Chart tooltip ───────────────────────────────────────────
 function ChartTip({ active, payload, label, money }) {
   if (!active || !payload || !payload.length) return null;
@@ -203,7 +214,6 @@ function ChartTip({ active, payload, label, money }) {
 // OWNER VIEW
 // ═══════════════════════════════════════════════════════════
 function OwnerView({ prop, m, setDrill }) {
-  const occUp = m.occDelta >= 0;
   const incomePie = [
     { name: 'Resident Rent', key: 'resident', value: m.residentIncome, fill: INCOME_COLORS.resident },
     { name: 'Rental Assistance', key: 'subsidy', value: m.subsidyIncome, fill: INCOME_COLORS.subsidy },
@@ -234,9 +244,13 @@ function OwnerView({ prop, m, setDrill }) {
       <div className="section-title">Performance & Income</div>
       <div className="kpi-grid kpi-grid-4" style={{ marginTop: 14 }}>
         <KpiCard
-          label="Occupancy Rate" accent={occUp ? 'green' : 'red'}
+          label="Occupancy Rate" accent="blue"
           value={fmtPct(m.occupancyRate)}
-          sub={<><span className={occUp ? 'up' : 'down'}>{occUp ? '▲' : '▼'} {fmtPct(Math.abs(m.occDelta))}</span> vs. prior month · {m.occupied}/{m.totalUnits} units</>}
+          sub={<div className="kpi-compare">
+            <span>vs. 3-mo avg <DataFlag note="requires 3 months of occupancy history — the reports cover a single period" /></span>
+            <span>vs. same time last year <DataFlag note="requires prior-year occupancy history" /></span>
+            <span style={{ color: 'var(--slate-400)' }}>{m.occupied}/{m.totalUnits} units occupied</span>
+          </div>}
           onClick={() => setDrill({ type: 'occupancy', eyebrow: 'Occupancy', title: `${prop.name} — Occupancy`,
             sub: `${m.occupied} of ${m.totalUnits} units occupied`, payload: { ...m, pending: m.pendingCount } })}
         />
@@ -256,16 +270,16 @@ function OwnerView({ prop, m, setDrill }) {
           label="Delinquency Rate" variant={m.delinquencyRate > 5 ? 'warning' : ''}
           accent={m.delinquencyRate > 5 ? 'red' : undefined}
           value={fmtPct(m.delinquencyRate)}
-          sub={<>{fmtUSD(m.totalDelinquent)} of {fmtUSD(m.monthlyRentRoll)} rent roll · {m.delinquentUnits.length} units</>}
+          sub={<>{fmtUSD(m.currentRentDelinquent)} current rent owed ÷ {fmtUSD(m.monthlyRentRoll)} billed</>}
           onClick={() => setDrill({ type: 'delinquency-card', eyebrow: 'Delinquency', title: `${prop.name} — Delinquency`,
-            sub: 'Outstanding resident & subsidy balances', payload: m })}
+            sub: 'Current-month resident rent owed ÷ total monthly billed rent', payload: m })}
         />
         <KpiCard
           label="Capital Expenditures" variant="capex"
           value={fmtUSD(m.totalCapex)}
-          sub={m.totalCapex > 0 ? `${m.capexAccounts.length} capital project${m.capexAccounts.length !== 1 ? 's' : ''} (9xxx)` : 'No capital activity this period'}
+          sub={m.totalCapex > 0 ? `${m.capexAccounts.length} capital account${m.capexAccounts.length !== 1 ? 's' : ''} (6589 / 9120)` : 'No capital activity this period (6589 / 9120)'}
           onClick={() => setDrill({ type: 'capex', eyebrow: 'Capital', title: `${prop.name} — Capital Expenditures`,
-            sub: 'GL entries to 9xxx capital accounts',
+            sub: 'GL entries to 6589-XXXX and 9120-XXXX accounts',
             payload: { total: m.totalCapex, accounts: m.capexAccounts.map((a) => ({ ...a, transactions: acct(prop, a.num)?.transactions })) } })}
         />
       </div>
@@ -280,9 +294,10 @@ function OwnerView({ prop, m, setDrill }) {
         <KpiCard label="Tax & Insurance Reserve" valueSmall
           value={m.ti !== null ? fmtUSD(m.ti) : null}
           sub="GL 1180-1000" onClick={() => openGL('1180-1000')} />
-        <KpiCard label="Open Payables" valueSmall variant={m.payables > 10000 ? 'warning' : ''}
+        <KpiCard label="Open Payables" valueSmall variant="warning"
           value={m.payables !== null ? fmtUSD(m.payables) : null}
-          sub="GL 2110-0000 · Accounts Payable" onClick={() => openGL('2110-0000')} />
+          sub={<>GL 2110-0000 <DataFlag note="owner reports this figure looks off — confirm the expected source (e.g. AP aging vs. GL account balance) and value" /></>}
+          onClick={() => openGL('2110-0000')} />
       </div>
 
       <div className="section-title" style={{ marginTop: 28 }}>Income, Expenses & Capital</div>
@@ -296,9 +311,9 @@ function OwnerView({ prop, m, setDrill }) {
               <XAxis dataKey="name" tick={{ fill: 'var(--slate-400)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--slate-400)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={fmtUSDk} />
               <Tooltip content={<ChartTip money />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={64} />
-              <Bar dataKey="Expenses" fill="#f87171" radius={[4, 4, 0, 0]} maxBarSize={64} />
-              <Bar dataKey="Capex" fill="#fbbf24" radius={[4, 4, 0, 0]} maxBarSize={64} />
+              <Bar isAnimationActive={false} dataKey="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={64} />
+              <Bar isAnimationActive={false} dataKey="Expenses" fill="#f87171" radius={[4, 4, 0, 0]} maxBarSize={64} />
+              <Bar isAnimationActive={false} dataKey="Capex" fill="#fbbf24" radius={[4, 4, 0, 0]} maxBarSize={64} />
             </BarChart>
           </ResponsiveContainer>
           <div className="legend" style={{ flexDirection: 'row', gap: 16, justifyContent: 'center' }}>
@@ -313,7 +328,7 @@ function OwnerView({ prop, m, setDrill }) {
           <div className="chart-sub">Total {fmtUSD(m.totalIncome)}</div>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={incomePie} dataKey="value" nameKey="name" cx="50%" cy="50%"
+              <Pie isAnimationActive={false} data={incomePie} dataKey="value" nameKey="name" cx="50%" cy="50%"
                 innerRadius={55} outerRadius={80} paddingAngle={2} stroke="none">
                 {incomePie.map((e, i) => <Cell key={i} fill={e.fill} />)}
               </Pie>
@@ -339,7 +354,7 @@ function OwnerView({ prop, m, setDrill }) {
               <XAxis type="number" tick={{ fill: 'var(--slate-400)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtUSDk} />
               <YAxis type="category" dataKey="name" tick={{ fill: 'var(--slate-300)', fontSize: 11 }} axisLine={false} tickLine={false} width={92} />
               <Tooltip content={<ChartTip money />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
+              <Bar isAnimationActive={false} dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={22}>
                 {expenseData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 <LabelList dataKey="value" position="right" formatter={fmtUSDk} fill="var(--slate-400)" fontSize={10} />
               </Bar>
@@ -347,7 +362,88 @@ function OwnerView({ prop, m, setDrill }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* #6 Variance Analysis + #7 Document Repository */}
+      <div className="two-col" style={{ marginTop: 28 }}>
+        <VarianceAnalysis prop={prop} accounts={m.expenseAccounts} setDrill={setDrill} />
+        <DocumentRepository prop={prop} />
+      </div>
     </>
+  );
+}
+
+// ── #6 Variance Analysis (needs budget / prior-period actuals) ──
+function VarianceAnalysis({ prop, accounts, setDrill }) {
+  const rows = [...accounts].sort((a, b) => b.amount - a.amount).slice(0, 8);
+  return (
+    <div>
+      <div className="section-title" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        Variance Analysis
+        <DataFlag note="requires an approved budget or prior-period actuals to compute variance — the reports contain only current-period activity" />
+      </div>
+      <div className="table-card" style={{ marginTop: 0 }}>
+        <div className="table-header">
+          <span className="table-title">Actual vs. Budget — Key GL Accounts</span>
+          <span className="table-count">{rows.length} accounts</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Account</th><th className="right">Actual</th><th className="right">Budget</th><th className="right">Variance</th></tr></thead>
+            <tbody>
+              {rows.map((a) => (
+                <tr key={a.num} className="clickable"
+                  onClick={() => { const acc = acct(prop, a.num); setDrill({ type: 'gl', eyebrow: 'General Ledger', title: `${a.num} · ${acc?.name || a.name}`, sub: 'Account transaction detail', payload: { account: acc } }); }}>
+                  <td className="strong">{a.name}</td>
+                  <td className="right mono">{fmtUSD(a.amount)}</td>
+                  <td className="right mono" style={{ color: 'var(--slate-400)' }}>—</td>
+                  <td className="right"><DataFlag /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── #7 Owner Document Repository (needs document storage wired up) ──
+function DocumentRepository({ prop }) {
+  const docs = [
+    { name: 'Financial Statement — May 2026', type: 'PDF', date: 'Jun 10, 2026' },
+    { name: 'General Ledger — May 2026', type: 'Excel', date: 'Jun 10, 2026' },
+    { name: 'Rent Roll Detail — May 2026', type: 'Excel', date: 'Jun 10, 2026' },
+    { name: 'Budget vs. Actual — May 2026', type: 'PDF', date: 'Jun 10, 2026' },
+    { name: 'Capital Expenditure Report — YTD', type: 'PDF', date: 'Jun 10, 2026' },
+  ];
+  return (
+    <div>
+      <div className="section-title" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+        Owner Document Repository
+        <DataFlag note="sample layout — connect a document store (or upload the monthly PDFs/Excel) to make these downloadable in one place" />
+      </div>
+      <div className="table-card" style={{ marginTop: 0 }}>
+        <div className="table-header">
+          <span className="table-title">Owner Reports — {prop.name}</span>
+          <span className="table-count">all-in-one</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Document</th><th>Type</th><th>Posted</th><th className="right">Download</th></tr></thead>
+            <tbody>
+              {docs.map((d, i) => (
+                <tr key={i}>
+                  <td className="strong">{d.name}</td>
+                  <td><span className="badge badge-gray">{d.type}</span></td>
+                  <td className="mono">{d.date}</td>
+                  <td className="right"><span className="doc-download">Download <DataFlag /></span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -355,7 +451,8 @@ function OwnerView({ prop, m, setDrill }) {
 // OPERATIONAL VIEW
 // ═══════════════════════════════════════════════════════════
 function OperationalView({ prop, m, setDrill }) {
-  const pipelineData = m.pipeline.map((b) => {
+  // Certification Expiration pipeline (recertification, derived from move-in anniversary).
+  const pipelineData = m.certPipeline.map((b) => {
     let fill = '#475569';
     if (b.within30) fill = '#ef4444';
     else if (b.within60) fill = '#f59e0b';
@@ -364,7 +461,7 @@ function OperationalView({ prop, m, setDrill }) {
     return { ...b, fill };
   });
 
-  const next90 = m.pipeline.filter((b) => b.within30 || b.within60 || b.within90)
+  const next90 = m.certPipeline.filter((b) => b.within30 || b.within60 || b.within90)
     .reduce((s, b) => s + b.count, 0);
 
   return (
@@ -420,6 +517,27 @@ function OperationalView({ prop, m, setDrill }) {
               </div>
             </div>
           )}
+          {/* #8 Pending Move-Outs */}
+          <div className="table-card" style={{ marginTop: 16 }}>
+            <div className="table-header">
+              <span className="table-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>Pending Move-Outs <DataFlag note="requires move-out notice dates — the rent roll's move-out column is blank for every unit" /></span>
+              <span className="table-count">{m.pendingMoveOuts.length}</span>
+            </div>
+            <div className="table-wrap">
+              {m.pendingMoveOuts.length === 0 ? (
+                <div className="empty-state">No scheduled move-outs in the source data. Connect notice-to-vacate dates to populate this panel.</div>
+              ) : (
+                <table>
+                  <thead><tr><th>Unit</th><th>Resident</th><th>Scheduled Move-Out</th></tr></thead>
+                  <tbody>
+                    {m.pendingMoveOuts.map((p, i) => (
+                      <tr key={i}><td className="strong">{p.unit}</td><td>{p.name || '—'}</td><td className="mono">{fmtDate(p.move_out)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
 
         <div>
@@ -492,13 +610,16 @@ function OperationalView({ prop, m, setDrill }) {
         </div>
 
         <div>
-          <div className="section-title" style={{ marginBottom: 10 }}>Lease Expiration Pipeline · Next 12 Months</div>
+          <div className="section-title" style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Certification Expiration · Next 12 Months
+            <DataFlag note="recertification dates aren't in the reports — these are derived from each resident's move-in anniversary (the standard annual USDA/HUD cycle)" />
+          </div>
           <div className="chart-card">
             <div className="chart-sub" style={{ marginBottom: 14 }}>
               <span className="badge badge-red" style={{ marginRight: 6 }}>{'≤'}30d</span>
               <span className="badge badge-amber" style={{ marginRight: 6 }}>{'≤'}60d</span>
               <span className="badge" style={{ background: 'rgba(251,191,36,0.16)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.35)', marginRight: 6 }}>{'≤'}90d</span>
-              <span style={{ color: 'var(--slate-400)' }}>· {next90} within 90 days · {m.expiredHoldover} holdover</span>
+              <span style={{ color: 'var(--slate-400)' }}>· {next90} recerts due within 90 days</span>
             </div>
             <ResponsiveContainer width="100%" height={230}>
               <BarChart data={pipelineData} barCategoryGap="22%">
@@ -506,8 +627,8 @@ function OperationalView({ prop, m, setDrill }) {
                 <XAxis dataKey="label" tick={{ fill: 'var(--slate-400)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis allowDecimals={false} tick={{ fill: 'var(--slate-400)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<ChartTip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                <Bar dataKey="count" name="Leases Expiring" radius={[4, 4, 0, 0]} maxBarSize={40}
-                  onClick={(d) => d && d.count > 0 && setDrill({ type: 'leases', eyebrow: 'Lease Pipeline', title: `Leases Expiring — ${d.label}`, sub: 'Click-through from pipeline', payload: { windowLabel: d.label, leases: d.leases } })}
+                <Bar isAnimationActive={false} dataKey="count" name="Recerts Due" radius={[4, 4, 0, 0]} maxBarSize={40}
+                  onClick={(d) => d && d.count > 0 && setDrill({ type: 'leases', eyebrow: 'Certification Pipeline', title: `Recertifications Due — ${d.label}`, sub: 'Derived from move-in anniversary', payload: { windowLabel: d.label, leases: d.leases } })}
                   style={{ cursor: 'pointer' }}>
                   {pipelineData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                   <LabelList dataKey="count" position="top" formatter={(v) => v || ''} fill="var(--slate-300)" fontSize={10} />
@@ -515,6 +636,38 @@ function OperationalView({ prop, m, setDrill }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* #5a Recertifications — Past Due & Upcoming */}
+      <div className="section-title" style={{ marginTop: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
+        Recertifications · Past Due &amp; Upcoming
+        <DataFlag note="'Past due' can't be determined without recert-completion records; upcoming dates are derived from move-in anniversaries" />
+      </div>
+      <div className="table-card" style={{ marginTop: 10 }}>
+        <div className="table-header">
+          <span className="table-title">Upcoming Recertifications (next 90 days)</span>
+          <span className="table-count">{m.recertsUpcoming.length} due</span>
+        </div>
+        <div className="table-wrap">
+          {m.recertsUpcoming.length === 0 ? (
+            <div className="empty-state">No recertifications derived within the next 90 days.</div>
+          ) : (
+            <table>
+              <thead><tr><th>Unit</th><th>Resident</th><th>Recert Due (derived)</th><th className="right">Days Until</th><th>Status</th></tr></thead>
+              <tbody>
+                {m.recertsUpcoming.map((r) => (
+                  <tr key={r.unit}>
+                    <td className="strong">{r.unit}</td>
+                    <td>{r.name || '—'}</td>
+                    <td className="mono">{fmtDate(r.nextRecert)}</td>
+                    <td className="right mono">{r.daysUntil}</td>
+                    <td><span className={`badge ${r.daysUntil <= 30 ? 'badge-red' : r.daysUntil <= 60 ? 'badge-amber' : 'badge-blue'}`}>{r.daysUntil <= 30 ? 'Due soon' : 'Upcoming'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </>
@@ -635,9 +788,9 @@ function PortfolioView({ data, allMetrics, portfolio, onSelect }) {
               <XAxis dataKey="name" tick={{ fill: 'var(--slate-400)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--slate-400)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtUSDk} />
               <Tooltip content={<ChartTip money />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="Resident" stackId="a" fill={INCOME_COLORS.resident} maxBarSize={54} />
-              <Bar dataKey="Subsidy" stackId="a" fill={INCOME_COLORS.subsidy} maxBarSize={54} />
-              <Bar dataKey="Misc" stackId="a" fill={INCOME_COLORS.misc} radius={[4, 4, 0, 0]} maxBarSize={54} />
+              <Bar isAnimationActive={false} dataKey="Resident" stackId="a" fill={INCOME_COLORS.resident} maxBarSize={54} />
+              <Bar isAnimationActive={false} dataKey="Subsidy" stackId="a" fill={INCOME_COLORS.subsidy} maxBarSize={54} />
+              <Bar isAnimationActive={false} dataKey="Misc" stackId="a" fill={INCOME_COLORS.misc} radius={[4, 4, 0, 0]} maxBarSize={54} />
             </BarChart>
           </ResponsiveContainer>
           <div className="legend" style={{ flexDirection: 'row', gap: 16, justifyContent: 'center' }}>
@@ -656,7 +809,7 @@ function PortfolioView({ data, allMetrics, portfolio, onSelect }) {
               <XAxis dataKey="name" tick={{ fill: 'var(--slate-400)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--slate-400)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtUSDk} />
               <Tooltip content={<ChartTip money />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-              <Bar dataKey="Cash" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={64}>
+              <Bar isAnimationActive={false} dataKey="Cash" fill="#60a5fa" radius={[4, 4, 0, 0]} maxBarSize={64}>
                 <LabelList dataKey="Cash" position="top" formatter={fmtUSDk} fill="var(--slate-400)" fontSize={10} />
               </Bar>
             </BarChart>

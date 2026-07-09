@@ -302,6 +302,25 @@ tr.flag-amber td { background: rgba(245,158,11,0.06); }
 .alert-text strong { color: var(--white); font-weight: 600; }
 .alert-value { font-size: 13px; font-weight: 700; color: var(--white); }
 
+/* ── "Data needed" marker (red dot + hover note) ─────── */
+.data-flag { position: relative; display: inline-flex; align-items: center; gap: 5px; cursor: help; vertical-align: middle; }
+.data-flag-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red-500); box-shadow: 0 0 0 3px rgba(239,68,68,0.16); flex-shrink: 0; animation: flagpulse 2.4s ease-in-out infinite; }
+@keyframes flagpulse { 0%,100% { box-shadow: 0 0 0 3px rgba(239,68,68,0.16); } 50% { box-shadow: 0 0 0 4px rgba(239,68,68,0.05); } }
+.data-flag-label { font-size: 11px; color: var(--red-400); font-weight: 600; }
+.data-flag-tip {
+  position: absolute; bottom: calc(100% + 9px); left: 50%; transform: translateX(-50%);
+  background: var(--navy-950); color: var(--slate-200); border: 1px solid var(--navy-600);
+  border-radius: 8px; padding: 9px 11px; font-size: 11.5px; font-weight: 500; line-height: 1.45;
+  width: max-content; max-width: 250px; white-space: normal; text-transform: none; letter-spacing: normal;
+  box-shadow: var(--shadow-lift); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.15s; z-index: 60;
+}
+.data-flag-tip strong { color: var(--red-400); }
+.data-flag-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: var(--navy-600); }
+.data-flag:hover .data-flag-tip, .data-flag:focus .data-flag-tip { opacity: 1; visibility: visible; }
+.kpi-compare { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--slate-300); }
+.kpi-compare > span { display: flex; align-items: center; gap: 6px; }
+.doc-download { display: inline-flex; align-items: center; gap: 6px; color: var(--gold-400); font-weight: 600; font-size: 12px; }
+
 /* ── Modal / slide-in ──────────────────── */
 .modal-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 200; display: flex; justify-content: flex-end; backdrop-filter: blur(3px); animation: fadeIn 0.15s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

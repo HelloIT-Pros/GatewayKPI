@@ -107,13 +107,17 @@ export function computeMetrics(prop) {
   });
   const totalIncome = residentIncome + subsidyIncome + miscIncome;
 
+  // Capital accounts per Gateway definition: 6589-XXXX and 9120-XXXX.
+  const isCapex = (num) => num.startsWith('6589') || num.startsWith('9120');
+
   // ---- Expenses by category (6xxx–8xxx; debit balances) ----
+  // Capital accounts (6589-xxxx) are excluded here so they are not double-counted.
   const expenseByCat = {};
   const expenseAccounts = [];
   let totalExpenses = 0;
   Object.entries(accounts).forEach(([num, a]) => {
     const first = num[0];
-    if (first === '6' || first === '7' || first === '8') {
+    if ((first === '6' || first === '7' || first === '8') && !isCapex(num)) {
       const amt = a.ending_balance || 0;
       if (Math.abs(amt) < 0.005) return;
       const cat = categorizeExpense(num);
@@ -123,11 +127,11 @@ export function computeMetrics(prop) {
     }
   });
 
-  // ---- Capital expenditures (9xxx) ----
+  // ---- Capital expenditures (6589-XXXX and 9120-XXXX) ----
   const capexAccounts = [];
   let totalCapex = 0;
   Object.entries(accounts).forEach(([num, a]) => {
-    if (num[0] === '9') {
+    if (isCapex(num)) {
       const amt = a.ending_balance || 0;
       if (Math.abs(amt) < 0.005) return;
       capexAccounts.push({ num, name: a.name, amount: amt });
@@ -250,9 +254,17 @@ export function computeMetrics(prop) {
 
   const totalDelinquent = delinquentUnits.reduce((s, u) => s + u.delinquentAmount, 0);
 
-  // Total monthly rent roll (gross potential / actual charges)
+  // Total monthly billed rent (gross potential / actual charges = resident + subsidy).
   const monthlyRentRoll = units.reduce((s, u) => s + u.total_rent, 0);
-  const delinquencyRate = monthlyRentRoll ? (totalDelinquent / monthlyRentRoll) * 100 : 0;
+
+  // Delinquency rate (Gateway definition): current-month resident rent still
+  // owed (the "Current" aging bucket for resident charges only) ÷ total monthly
+  // billed rent. Older past-due and subsidy receivables are excluded.
+  const currentRentDelinquent = dq.reduce((s, r) => {
+    const isSub = /SUBRENT|SUBSIDY/i.test(r.code);
+    return isSub ? s : s + Math.max(0, r.current || 0);
+  }, 0);
+  const delinquencyRate = monthlyRentRoll ? (currentRentDelinquent / monthlyRentRoll) * 100 : 0;
 
   // ---- Deposit deficiencies ----
   const depositDeficiencies = units
@@ -297,12 +309,63 @@ export function computeMetrics(prop) {
     }
   });
 
+  // ---- Certification expiration / recertification (derived) ----
+  // The reports carry no explicit recertification date, so annual recert dates
+  // are derived from the move-in anniversary (the standard USDA/HUD cycle).
+  // This drives both the Certification Expiration pipeline and the recert panel.
+  // `recertDatesAvailable` is false to flag that these are derived, not sourced.
+  const recertDatesAvailable = false;
+  const certPipeline = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(AS_OF.getFullYear(), AS_OF.getMonth() + i, 1);
+    certPipeline.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: MONTHS[d.getMonth()].slice(0, 3) + " '" + String(d.getFullYear()).slice(2),
+      monthDate: d,
+      count: 0,
+      leases: [],
+      within30: false, within60: false, within90: false,
+    });
+  }
+  const recerts = [];
+  occupiedUnits.forEach((u) => {
+    const mi = parseDate(u.move_in);
+    if (!mi) return;
+    // next anniversary of move-in on/after the as-of date
+    let next = new Date(AS_OF.getFullYear(), mi.getMonth(), mi.getDate());
+    if (next < AS_OF) next = new Date(AS_OF.getFullYear() + 1, mi.getMonth(), mi.getDate());
+    const daysUntil = daysBetween(AS_OF, next);
+    recerts.push({ unit: u.unit, name: u.name, move_in: u.move_in, nextRecert: next, daysUntil });
+    const bIdx = certPipeline.findIndex(
+      (b) => b.monthDate.getFullYear() === next.getFullYear() && b.monthDate.getMonth() === next.getMonth()
+    );
+    if (bIdx >= 0) {
+      certPipeline[bIdx].count++;
+      certPipeline[bIdx].leases.push({ unit: u.unit, name: u.name, lease_end: fmtDate(next), total_rent: u.total_rent });
+      if (next <= d30) certPipeline[bIdx].within30 = true;
+      else if (next <= d60) certPipeline[bIdx].within60 = true;
+      else if (next <= d90) certPipeline[bIdx].within90 = true;
+    }
+  });
+  recerts.sort((a, b) => a.nextRecert - b.nextRecert);
+  const recertsUpcoming = recerts.filter((r) => r.daysUntil >= 0 && r.daysUntil <= 90);
+
   // ---- Pending move-ins ----
   const pendingMoveIns = units
     .map((u) => ({ ...u, mi: parseDate(u.move_in) }))
     .filter((u) => u.mi && u.mi > AS_OF)
     .sort((a, b) => a.mi - b.mi)
     .map((u) => ({ unit: u.unit, name: u.name, move_in: u.move_in }));
+
+  // ---- Pending move-outs (#8) ----
+  // Requires move-out notice dates, which are not present in the rent roll
+  // (all move-out fields are blank). Flagged so the UI can mark it.
+  const moveOutDatesAvailable = units.some((u) => parseDate(u.move_out));
+  const pendingMoveOuts = units
+    .map((u) => ({ ...u, mo: parseDate(u.move_out) }))
+    .filter((u) => u.mo && u.mo >= AS_OF)
+    .sort((a, b) => a.mo - b.mo)
+    .map((u) => ({ unit: u.unit, name: u.name, move_out: u.move_out }));
 
   return {
     // income
@@ -316,12 +379,18 @@ export function computeMetrics(prop) {
     totalUnits, occupied, vacant, occupancyRate, occDelta, priorOccRate,
     moveInsThisPeriod, moveOutsThisPeriod,
     units, vacantDetail, pendingMoveIns, pendingCount: pendingUnits.length,
+    // occupancy comparisons (#1) — require historical snapshots not in the data
+    occ3moAvg: null, occYoY: null, occHistoryAvailable: false,
     // delinquency
-    delinquentUnits, totalDelinquent, delinquencyRate, monthlyRentRoll, propHasSubsidy,
+    delinquentUnits, totalDelinquent, delinquencyRate, currentRentDelinquent,
+    monthlyRentRoll, propHasSubsidy,
     // deposits
     depositDeficiencies,
-    // leases
+    // leases (retained) + certification / recertification (#5)
     pipeline, expiredHoldover, d30, d60, d90,
+    certPipeline, recerts, recertsUpcoming, recertDatesAvailable,
+    // move-outs (#8)
+    pendingMoveOuts, moveOutDatesAvailable,
     // misc
     bankDeposits: prop.bank_deposits || [],
     // open work orders — no source file present in data set
@@ -348,9 +417,10 @@ export function computePortfolio(allMetrics) {
     ti: sum((m) => m.ti),
     payables: sum((m) => m.payables),
     totalDelinquent: sum((m) => m.totalDelinquent),
+    currentRentDelinquent: sum((m) => m.currentRentDelinquent),
     monthlyRentRoll: sum((m) => m.monthlyRentRoll),
     delinquencyRate: sum((m) => m.monthlyRentRoll)
-      ? (sum((m) => m.totalDelinquent) / sum((m) => m.monthlyRentRoll)) * 100 : 0,
+      ? (sum((m) => m.currentRentDelinquent) / sum((m) => m.monthlyRentRoll)) * 100 : 0,
     residentIncome: sum((m) => m.residentIncome),
     subsidyIncome: sum((m) => m.subsidyIncome),
     miscIncome: sum((m) => m.miscIncome),
